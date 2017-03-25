@@ -27,3 +27,9 @@
 *.exe
 *.out
 *.app
+
+# emacs
+*~
+
+# core dumps
+*.core
