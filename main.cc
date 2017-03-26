@@ -41,7 +41,7 @@ int main() {
     .setTCType(MAX31856::TCType::T)
     .setAvgMode(MAX31856::AvgMode::S4)
     .setConversionMode(true);
-  thermo0.set50Hz(true)
+  thermo1.set50Hz(true)
     .setTCType(MAX31856::TCType::K)
     .setAvgMode(MAX31856::AvgMode::S8)
     .setConversionMode(true);
