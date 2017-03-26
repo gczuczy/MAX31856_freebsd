@@ -33,3 +33,8 @@
 
 # core dumps
 *.core
+
+#output
+spitest
+
+.depend

@@ -35,28 +35,37 @@ int main() {
 
   DirectSelect ds(gpio);
   SPI spi(ds, gpio, "/dev/spigen0");
-  MAX31856 thermo1(spi, 0);
+  MAX31856 thermo0(spi, 0), thermo1(spi, 1);
 
-  thermo1.set50Hz(true)
+  thermo0.set50Hz(true)
     .setTCType(MAX31856::TCType::T)
     .setAvgMode(MAX31856::AvgMode::S4)
+    .setConversionMode(true);
+  thermo0.set50Hz(true)
+    .setTCType(MAX31856::TCType::K)
+    .setAvgMode(MAX31856::AvgMode::S8)
     .setConversionMode(true);
 
   SPI::Data cmd{0x00},data(1);
   spi.transfer(0, cmd, data);
-  printf("CR0: %s / %s\n", data.hexdump().c_str(),
+  printf("0/CR0: %s / %s\n", data.hexdump().c_str(),
 	 data.bindump().c_str());
   cmd[0] = 0x01;
   data[0] = 0;
   spi.transfer(0, cmd, data);
-  printf("CR1: %s / %s\n", data.hexdump().c_str(),
+  printf("0/CR1: %s / %s\n", data.hexdump().c_str(),
 	 data.bindump().c_str());
 
   double cjt, tct;
+  cjt = thermo0.readCJTemp();
+  printf("0/CJ temp: %f C\n", cjt);
+  tct = thermo0.readTCTemp();
+  printf("0/TC temp: %f C\n", tct);
+
   cjt = thermo1.readCJTemp();
-  printf("CJ temp: %f C\n", cjt);
+  printf("1/CJ temp: %f C\n", cjt);
   tct = thermo1.readTCTemp();
-  printf("TC temp: %f C\n", tct);
+  printf("1/TC temp: %f C\n", tct);
 
   return 0;
 }
