@@ -43,8 +43,7 @@ int main() {
     .setConversionMode(true);
   thermo1.set50Hz(true)
     .setTCType(MAX31856::TCType::K)
-    .setAvgMode(MAX31856::AvgMode::S8)
-    .setConversionMode(true);
+    .setAvgMode(MAX31856::AvgMode::S8);
 
   SPI::Data cmd{0x00},data(1);
   spi.transfer(0, cmd, data);

@@ -70,6 +70,7 @@ private:
 private:
   void xfer(SPI::Data &_cmd, SPI::Data &_data);
   void clearOCFault();
+  void setOneShot();
 };
 
 #endif

@@ -3,6 +3,9 @@
 
 #include <stdio.h>
 
+#include <chrono>
+#include <thread>
+
 MAX31856::MAX31856(SPI &_spi, int _chipid): c_spi(_spi), c_chipid(_chipid), c_convmode(false) {
   setConversionMode(false);
 
@@ -152,6 +155,14 @@ double MAX31856::readCJTemp() {
 double MAX31856::readTCTemp() {
   double temp=0;
   uint32_t reading(0);
+
+  // if autoconv mode is disabled, we have to do a 1shot
+  if ( !c_convmode ) {
+    setOneShot();
+    std::chrono::microseconds ival(175000);
+    std::this_thread::sleep_for(ival);
+  }
+
   SPI::Data cmd{(uint8_t)Register::LTCBH}, data(1);
 
   for (int i=0; i<3; ++i) {
@@ -164,4 +175,23 @@ double MAX31856::readTCTemp() {
   reading >>= 5;
   temp = (1.0*reading)/128.0;
   return temp;
+}
+
+void MAX31856::setOneShot() {
+  SPI::Data cmd{(uint8_t)Register::CR0}, data(1);
+
+  uint8_t mask = 0b10111111;
+  uint8_t modebit = (uint8_t)0b01000000;
+
+  xfer(cmd, data);
+#ifdef MAX31856_DEBUG
+  printf("setOneShot: Pre-state: %s\n", data.bindump().c_str());
+#endif
+  data[0] |= modebit;
+#ifdef MAX31856_DEBUG
+  printf("setOneShot: Setting to %s\n", data.bindump().c_str());
+#endif
+  cmd[0] = 0x80|(uint8_t)Register::CR0;
+
+  xfer(cmd, data);
 }
