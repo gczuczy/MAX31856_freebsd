@@ -35,15 +35,21 @@ int main() {
 
   DirectSelect ds(gpio);
   SPI spi(ds, gpio, "/dev/spigen0");
-  MAX31856 thermo0(spi, 0), thermo1(spi, 1);
+  MAX31856 thermo0(spi, 0);
+#if CHIP1
+  MAX31856 thermo1(spi, 1);
+#endif
 
   thermo0.set50Hz(true)
     .setTCType(MAX31856::TCType::T)
     .setAvgMode(MAX31856::AvgMode::S4)
-    .setConversionMode(true);
+    .setConversionMode(true)
+    .dumpState();
+#ifdef CHIP1
   thermo1.set50Hz(true)
     .setTCType(MAX31856::TCType::K)
     .setAvgMode(MAX31856::AvgMode::S8);
+#endif
 
   SPI::Data cmd{0x00},data(1);
   spi.transfer(0, cmd, data);
@@ -61,10 +67,12 @@ int main() {
   tct = thermo0.readTCTemp();
   printf("0/TC temp: %f C\n", tct);
 
+#ifdef CHIP1
   cjt = thermo1.readCJTemp();
   printf("1/CJ temp: %f C\n", cjt);
   tct = thermo1.readTCTemp();
   printf("1/TC temp: %f C\n", tct);
+#endif
 
   return 0;
 }

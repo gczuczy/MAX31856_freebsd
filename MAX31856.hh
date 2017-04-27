@@ -57,6 +57,7 @@ public:
   MAX31856 &set50Hz(bool _50hz);
   MAX31856 &setAvgMode(AvgMode _mode);
   MAX31856 &setTCType(TCType _type);
+  MAX31856 &dumpState();
 
   //temperature readings
   double readCJTemp();

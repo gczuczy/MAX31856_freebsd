@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <thread>
+#include <list>
 
 MAX31856::MAX31856(SPI &_spi, int _chipid): c_spi(_spi), c_chipid(_chipid), c_convmode(false) {
   setConversionMode(false);
@@ -127,6 +128,25 @@ MAX31856 &MAX31856::setTCType(TCType _type) {
   cmd[0] = 0x80|(uint8_t)Register::CR1;
 
   xfer(cmd, data);
+
+  return *this;
+}
+
+MAX31856 &MAX31856::dumpState() {
+
+  printf("Dumping MAX31856 id:%i\n", c_chipid);
+  for (auto &it: std::list<Register>({
+	Register::CR0,
+	Register::CR1,
+	Register::MASK,
+	  //	Register::,
+	Register::SR
+	  })) {
+    SPI::Data cmd{(uint8_t)it}, data(1);
+    xfer(cmd, data);
+    printf(" - %02x: %s / %s\n ", (uint8_t)it,
+	   data.hexdump().c_str(), data.bindump().c_str());
+  }
 
   return *this;
 }
