@@ -59,6 +59,7 @@ public:
   MAX31856 &setTCType(TCType _type);
   MAX31856 &setCJOffset(float _offset);
   MAX31856 &dumpState();
+  inline int getChipID() const { return c_chipid; };
 
   //temperature readings
   float readCJTemp();

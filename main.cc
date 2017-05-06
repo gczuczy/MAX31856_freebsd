@@ -1,8 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <sys/event.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
 #include <time.h>
@@ -15,7 +18,17 @@
 #include "SPI.hh"
 #include "MAX31856.hh"
 
-int main() {
+int main(int argc, char *argv[0]) {
+
+  char *csv = 0;
+  int nsensors = 1;
+  if ( argc >= 2 ) nsensors = atoi(argv[1]);
+  if ( argc >= 3 ) csv = argv[2];
+
+  if ( nsensors < 1 || nsensors > 4 ) {
+    fprintf(stderr, "Min 1 max 4 sensors\n");
+    return 1;
+  }
 
   // first verify the cpha mode from the dev.spi.0.cpha sysctl
   {
@@ -37,10 +50,12 @@ int main() {
   gpio[5].setname("cs2").output();
   gpio[6].setname("cs3").output();
 
+  std::map<int, std::string> dspins;
+
   DirectSelect ds(gpio, {{0,"cs0"},{1,"cs1"},{2,"cs2"},{3,"cs3"}});
   SPI spi(ds, gpio, "/dev/spigen0");
   std::vector<std::shared_ptr<MAX31856> > tcs;
-  for ( int i=0; i<4; ++i ) {
+  for ( int i=0; i<nsensors; ++i ) {
     auto tc = std::make_shared<MAX31856>(spi, i);
     tc->set50Hz(true)
       .setTCType(MAX31856::TCType::T)
@@ -73,6 +88,9 @@ int main() {
     return 0;
   }
 
+  int fd = 0;
+  if ( csv ) fd = open(csv, O_WRONLY|O_CREAT|O_TRUNC|O_SYNC,
+		       S_IRUSR|S_IWUSR | S_IRGRP | S_IROTH);
   while (true) {
     if ( (nchanges = kevent(kq, 0, 0, ke, 8, 0)) > 0 ) {
       for (int i=0; i<nchanges; ++i) {
@@ -80,15 +98,19 @@ int main() {
 	if ( ke[i].filter == EVFILT_TIMER && ke[i].ident == 0 ) {
 	  time_t t = time(0);
 	  printf("%li", t);
+	  if ( fd ) dprintf(fd, "%li", t);
 	  for ( auto &it: tcs ) {
 	    float temp = it->readTCTemp();
-	    printf(",%.2f", temp);
+	    printf(",%i:%.2f", it->getChipID(), temp);
+	    if ( fd ) dprintf(fd,",%.2f", temp);
 	  } // for tcs
-	printf("\n");
+	  printf("\n");
+	  if ( fd ) dprintf(fd, "\n");
 	} // if EVFILT_TIMER
       } // for nchanges
     } // if kevent
   } // while true
+  if ( fd ) close(fd);
 
 
   return 0;
