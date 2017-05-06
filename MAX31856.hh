@@ -57,12 +57,15 @@ public:
   MAX31856 &set50Hz(bool _50hz);
   MAX31856 &setAvgMode(AvgMode _mode);
   MAX31856 &setTCType(TCType _type);
+  MAX31856 &setCJOffset(float _offset);
   MAX31856 &dumpState();
 
   //temperature readings
-  double readCJTemp();
-  double readTCTemp();
+  float readCJTemp();
+  float readTCTemp();
 
+  // readouts
+  float getCJOffset();
 private:
   SPI &c_spi;
   int c_chipid;

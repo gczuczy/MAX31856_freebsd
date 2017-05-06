@@ -14,40 +14,37 @@
  * DirectSelet
  */
 
-DirectSelect::DirectSelect(GPIO &_gpio): c_gpio(_gpio) {
-  c_gpio["cs0"].high();
-  c_gpio["cs1"].high();
+DirectSelect::DirectSelect(GPIO &_gpio, std::map<int, std::string> _idpins): c_gpio(_gpio), c_idpins(_idpins) {
+  for ( auto &it: c_idpins ) {
+    c_gpio[it.second].high();
+  }
 }
 
 void DirectSelect::high(int _id) {
-  std::string pin;
-  if ( _id == 0 ) {
-    pin = "cs0";
-  } else if ( _id == 1 ) {
-    pin = "cs1";
-  } else {
+  auto it = c_idpins.find(_id);
+
+  if ( it == c_idpins.end() ) {
     printf("Unknown CS id: %i\n", _id);
     throw std::exception();
   }
-  c_gpio[pin].high();
+
+  c_gpio[it->second].high();
 }
 
 void DirectSelect::low(int _id) {
-  std::string pin;
-  if ( _id == 0 ) {
-    pin = "cs0";
-  } else if ( _id == 1 ) {
-    pin = "cs1";
-  } else {
+  auto it = c_idpins.find(_id);
+
+  if ( it == c_idpins.end() ) {
     printf("Unknown CS id: %i\n", _id);
     throw std::exception();
   }
-  c_gpio[pin].low();
+  c_gpio[it->second].low();
 }
 
 DirectSelect::~DirectSelect() {
-  c_gpio["cs0"].low();
-  c_gpio["cs1"].low();
+  for ( auto &it: c_idpins ) {
+    c_gpio[it.second].high();
+  }
 }
 
 /*

@@ -132,6 +132,26 @@ MAX31856 &MAX31856::setTCType(TCType _type) {
   return *this;
 }
 
+MAX31856 &MAX31856::setCJOffset(float _offset) {
+  SPI::Data cmd{(uint8_t)Register::CJTO}, data(1);
+
+  uint8_t mask = 0b11110000;
+  uint8_t offset = ((_offset<0)?1<<7:0)|(uint8_t)((_offset>0?_offset:-_offset)*16);
+
+  printf("setCJOffset(%i, %.4f): offset:%u\n", c_chipid, _offset, offset);
+
+  data[0] = offset;
+#ifdef MAX31856_DEBUG
+  printf("setTCType(%i): Setting to %s/%s, c_chipidn", c_chipid, data.hexdump().c_str(),
+	 data.bindump().c_str());
+#endif
+  cmd[0] = 0x80|(uint8_t)Register::CJTO;
+
+  xfer(cmd, data);
+
+  return *this;
+}
+
 MAX31856 &MAX31856::dumpState() {
 
   printf("Dumping MAX31856 id:%i\n", c_chipid);
@@ -140,6 +160,7 @@ MAX31856 &MAX31856::dumpState() {
 	Register::CR1,
 	Register::MASK,
 	  //	Register::,
+	  Register::CJTO,
 	Register::SR
 	  })) {
     SPI::Data cmd{(uint8_t)it}, data(1);
@@ -155,8 +176,8 @@ void MAX31856::xfer(SPI::Data &_cmd, SPI::Data &_data) {
   c_spi.transfer(c_chipid, _cmd, _data);
 }
 
-double MAX31856::readCJTemp() {
-  double temp;
+float MAX31856::readCJTemp() {
+  float temp;
   uint16_t reading(0);
   SPI::Data cmd{(uint8_t)Register::CJTH}, data(1);
 
@@ -172,8 +193,8 @@ double MAX31856::readCJTemp() {
   return temp;
 }
 
-double MAX31856::readTCTemp() {
-  double temp=0;
+float MAX31856::readTCTemp() {
+  float temp=0;
   uint32_t reading(0);
 
   // if autoconv mode is disabled, we have to do a 1shot
@@ -195,6 +216,22 @@ double MAX31856::readTCTemp() {
   reading >>= 5;
   temp = (1.0*reading)/128.0;
   return temp;
+}
+
+float MAX31856::getCJOffset() {
+  float offset;
+  uint8_t reading(0);
+  SPI::Data cmd{(uint8_t)Register::CJTO}, data(1);
+
+  xfer(cmd, data);
+  reading = data[0];
+
+  printf("getCJOffset(%i): CJTO:%u/%s\n", c_chipid, reading, data.bindump().c_str());
+
+  offset = (1.0*(reading&0x7f))/16.0;
+  if ( reading&0x80 ) offset *= -1;
+
+  return offset;
 }
 
 void MAX31856::setOneShot() {

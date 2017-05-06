@@ -2,10 +2,14 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#include <sys/event.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 
+#include <memory>
 #include <iostream>
+#include <vector>
 
 #include "GPIO.hh"
 #include "SPI.hh"
@@ -28,29 +32,27 @@ int main() {
   }
   GPIO gpio(0);
 
-  gpio[8].setname("cs0").output();
-  gpio[7].setname("cs1").output();
-  gpio["cs0"].low();
-  gpio["cs1"].low();
+  gpio[7].setname("cs0").output();
+  gpio[8].setname("cs1").output();
+  gpio[5].setname("cs2").output();
+  gpio[6].setname("cs3").output();
 
-  DirectSelect ds(gpio);
+  DirectSelect ds(gpio, {{0,"cs0"},{1,"cs1"},{2,"cs2"},{3,"cs3"}});
   SPI spi(ds, gpio, "/dev/spigen0");
-  MAX31856 thermo0(spi, 0);
-#if CHIP1
-  MAX31856 thermo1(spi, 1);
-#endif
+  std::vector<std::shared_ptr<MAX31856> > tcs;
+  for ( int i=0; i<4; ++i ) {
+    auto tc = std::make_shared<MAX31856>(spi, i);
+    tc->set50Hz(true)
+      .setTCType(MAX31856::TCType::T)
+      .setAvgMode(MAX31856::AvgMode::S4)
+      .setConversionMode(true);
+    tcs.push_back(tc);
+  }
 
-  thermo0.set50Hz(true)
-    .setTCType(MAX31856::TCType::T)
-    .setAvgMode(MAX31856::AvgMode::S4)
-    .setConversionMode(true)
-    .dumpState();
-#ifdef CHIP1
-  thermo1.set50Hz(true)
-    .setTCType(MAX31856::TCType::K)
-    .setAvgMode(MAX31856::AvgMode::S8);
-#endif
 
+  sleep(1);
+
+#if 0
   SPI::Data cmd{0x00},data(1);
   spi.transfer(0, cmd, data);
   printf("0/CR0: %s / %s\n", data.hexdump().c_str(),
@@ -60,19 +62,34 @@ int main() {
   spi.transfer(0, cmd, data);
   printf("0/CR1: %s / %s\n", data.hexdump().c_str(),
 	 data.bindump().c_str());
-
-  double cjt, tct;
-  cjt = thermo0.readCJTemp();
-  printf("0/CJ temp: %f C\n", cjt);
-  tct = thermo0.readTCTemp();
-  printf("0/TC temp: %f C\n", tct);
-
-#ifdef CHIP1
-  cjt = thermo1.readCJTemp();
-  printf("1/CJ temp: %f C\n", cjt);
-  tct = thermo1.readTCTemp();
-  printf("1/TC temp: %f C\n", tct);
 #endif
+
+  int kq = kqueue();
+  struct kevent ke[8];
+  int nchanges = 8;
+  EV_SET(&ke[0], 0, EVFILT_TIMER, EV_ADD|EV_ENABLE, NOTE_SECONDS, 3, 0);
+  if ( kevent(kq, ke, 1, 0, 0, 0) < 0 ) {
+    printf("kevent failed: %i/%s\n", errno, strerror(errno));
+    return 0;
+  }
+
+  while (true) {
+    if ( (nchanges = kevent(kq, 0, 0, ke, 8, 0)) > 0 ) {
+      for (int i=0; i<nchanges; ++i) {
+	// EVFILT_TIMER with ident=0 is our sensor timer
+	if ( ke[i].filter == EVFILT_TIMER && ke[i].ident == 0 ) {
+	  time_t t = time(0);
+	  printf("%li", t);
+	  for ( auto &it: tcs ) {
+	    float temp = it->readTCTemp();
+	    printf(",%.2f", temp);
+	  } // for tcs
+	printf("\n");
+	} // if EVFILT_TIMER
+      } // for nchanges
+    } // if kevent
+  } // while true
+
 
   return 0;
 }

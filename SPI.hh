@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <map>
 #include <initializer_list>
 
 #ifndef SPI_H
@@ -17,13 +18,14 @@ public:
 
 class DirectSelect: public ChipSelector {
 public:
-  DirectSelect(GPIO &_gpio);
+  DirectSelect(GPIO &_gpio, std::map<int, std::string> _idpins);
   virtual void high(int _id);
   virtual void low(int _id);
   virtual ~DirectSelect();
 
 private:
   GPIO &c_gpio;
+  std::map<int, std::string> c_idpins;
 };
 
 class CSGuard {
