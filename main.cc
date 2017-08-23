@@ -43,26 +43,27 @@ int main(int argc, char *argv[0]) {
       return 2;
     }
   }
-  GPIO gpio(0);
+  try {
+    GPIO gpio(0);
 
-  gpio[7].setname("cs0").output();
-  gpio[8].setname("cs1").output();
-  gpio[5].setname("cs2").output();
-  gpio[6].setname("cs3").output();
+    gpio[7].setname("cs0").output();
+    gpio[8].setname("cs1").output();
+    gpio[5].setname("cs2").output();
+    gpio[6].setname("cs3").output();
 
-  std::map<int, std::string> dspins;
+    std::map<int, std::string> dspins;
 
-  DirectSelect ds(gpio, {{0,"cs0"},{1,"cs1"},{2,"cs2"},{3,"cs3"}});
-  SPI spi(ds, gpio, "/dev/spigen0");
-  std::vector<std::shared_ptr<MAX31856> > tcs;
-  for ( int i=0; i<nsensors; ++i ) {
-    auto tc = std::make_shared<MAX31856>(spi, i);
-    tc->set50Hz(true)
-      .setTCType(MAX31856::TCType::T)
-      .setAvgMode(MAX31856::AvgMode::S4)
-      .setConversionMode(true);
-    tcs.push_back(tc);
-  }
+    DirectSelect ds(gpio, {{0,"cs0"},{1,"cs1"},{2,"cs2"},{3,"cs3"}});
+    SPI spi(ds, gpio, "/dev/spigen0");
+    std::vector<std::shared_ptr<MAX31856> > tcs;
+    for ( int i=0; i<nsensors; ++i ) {
+      auto tc = std::make_shared<MAX31856>(spi, i);
+      tc->set50Hz(true)
+	.setTCType(MAX31856::TCType::T)
+	.setAvgMode(MAX31856::AvgMode::S4)
+	.setConversionMode(true);
+      tcs.push_back(tc);
+    }
 
 
   sleep(1);
@@ -111,6 +112,13 @@ int main(int argc, char *argv[0]) {
     } // if kevent
   } // while true
   if ( fd ) close(fd);
+  }
+  catch (GPIO::Exception &e) {
+    printf("GPIO exception %s\n", e.what());
+  }
+  catch (std::exception &e) {
+    printf("std exception %s\n", e.what());
+  }
 
 
   return 0;
